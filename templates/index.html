@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video Downloader</title>
+<style>
+  :root { --bg:#0f1115; --card:#181b22; --line:#2a2f3a; --text:#e8eaf0; --muted:#8b93a7; --accent:#6c8cff; --err:#ff6b6b; --ok:#4ade80; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f4f5f9; --card:#fff; --line:#dde0ea; --text:#1b1e27; --muted:#6a7186; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui,sans-serif; display:flex; justify-content:center; padding:32px 16px; }
+  main { width:100%; max-width:640px; }
+  h1 { margin:0 0 4px; font-size:28px; }
+  p.sub { margin:0 0 24px; color:var(--muted); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:16px; }
+  .row { display:flex; gap:8px; }
+  input, select, button { font:inherit; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--text); padding:10px 12px; }
+  input[type=url] { flex:1; min-width:0; }
+  button { background:var(--accent); color:#fff; border:0; cursor:pointer; font-weight:600; }
+  button:disabled { opacity:.5; cursor:default; }
+  .meta { display:flex; gap:14px; }
+  .meta img { width:160px; height:90px; object-fit:cover; border-radius:8px; background:var(--line); flex-shrink:0; }
+  .meta h3 { margin:0 0 4px; font-size:16px; }
+  .meta small { color:var(--muted); }
+  .opts { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0; }
+  .opts label { font-size:13px; color:var(--muted); display:block; margin-bottom:4px; }
+  .opts select { width:100%; }
+  .tabs { display:flex; gap:6px; margin-top:16px; }
+  .tabs button { flex:1; background:var(--bg); color:var(--muted); border:1px solid var(--line); }
+  .tabs button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .bar { height:8px; background:var(--line); border-radius:99px; overflow:hidden; margin:12px 0 6px; }
+  .bar div { height:100%; width:0; background:var(--accent); transition:width .3s; }
+  .err { color:var(--err); } .ok { color:var(--ok); }
+  .hidden { display:none; }
+  footer { color:var(--muted); font-size:12px; text-align:center; margin-top:20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Video Downloader</h1>
+  <p class="sub">YouTube, TikTok, Instagram, Facebook, X, Dailymotion, Vimeo, Reddit and 1000+ more sites.</p>
+
+  <div class="card">
+    <div class="row">
+      <input id="url" type="url" placeholder="Paste a video link here..." autofocus>
+      <button id="fetch">Fetch</button>
+    </div>
+    <div id="msg" class="err hidden" style="margin-top:10px"></div>
+  </div>
+
+  <div id="panel" class="card hidden">
+    <div class="meta">
+      <img id="thumb" alt="">
+      <div><h3 id="title"></h3><small id="detail"></small></div>
+    </div>
+    <div class="tabs">
+      <button id="tabVideo" class="on">Video</button>
+      <button id="tabAudio">Audio only</button>
+    </div>
+    <div class="opts">
+      <div><label>Format</label><select id="format"></select></div>
+      <div id="qWrap"><label>Max quality</label><select id="quality"></select></div>
+    </div>
+    <button id="dl" style="width:100%">Download</button>
+    <div id="prog" class="hidden">
+      <div class="bar"><div id="fill"></div></div>
+      <small id="status"></small>
+    </div>
+  </div>
+  <footer>Only download content you have the right to save. Respect copyright and each site's terms.</footer>
+</main>
+<script>
+const VIDEO = {{ video_formats|tojson }}, AUDIO = {{ audio_formats|tojson }};
+const $ = id => document.getElementById(id);
+let mode = 'video';
+
+function setMode(m) {
+  mode = m;
+  $('tabVideo').classList.toggle('on', m === 'video');
+  $('tabAudio').classList.toggle('on', m === 'audio');
+  $('qWrap').classList.toggle('hidden', m === 'audio');
+  $('format').innerHTML = (m === 'video' ? VIDEO : AUDIO).map(f => `<option>${f}</option>`).join('');
+}
+$('tabVideo').onclick = () => setMode('video');
+$('tabAudio').onclick = () => setMode('audio');
+setMode('video');
+
+function showMsg(t) { $('msg').textContent = t; $('msg').classList.toggle('hidden', !t); }
+const fmtDur = s => s ? `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}` : '';
+
+async function post(path, body) {
+  const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || 'Request failed');
+  return j;
+}
+
+$('fetch').onclick = async () => {
+  showMsg(''); $('panel').classList.add('hidden');
+  $('fetch').disabled = true; $('fetch').textContent = '...';
+  try {
+    const d = await post('/api/info', { url: $('url').value });
+    $('thumb').src = d.thumbnail || '';
+    $('title').textContent = d.title || 'Untitled';
+    $('detail').textContent = [d.site, d.uploader, fmtDur(d.duration)].filter(Boolean).join(' · ');
+    $('quality').innerHTML = '<option value="">Best</option>' + d.heights.map(h => `<option value="${h}">${h}p</option>`).join('');
+    $('prog').classList.add('hidden');
+    $('panel').classList.remove('hidden');
+  } catch (e) { showMsg(e.message); }
+  $('fetch').disabled = false; $('fetch').textContent = 'Fetch';
+};
+$('url').addEventListener('keydown', e => { if (e.key === 'Enter') $('fetch').click(); });
+
+$('dl').onclick = async () => {
+  $('dl').disabled = true; $('prog').classList.remove('hidden');
+  $('fill').style.width = '0'; $('status').className = ''; $('status').textContent = 'Starting...';
+  try {
+    const { job_id } = await post('/api/download', { url: $('url').value, mode, format: $('format').value, height: $('quality').value });
+    while (true) {
+      await new Promise(r => setTimeout(r, 700));
+      const j = await (await fetch('/api/progress/' + job_id)).json();
+      $('fill').style.width = (j.progress || 0) + '%';
+      if (j.status === 'downloading') $('status').textContent = `Downloading ${j.progress||0}% ${j.speed||''} ${j.eta ? 'ETA ' + j.eta : ''}`;
+      else if (j.status === 'processing') $('status').textContent = 'Converting...';
+      if (j.status === 'error') throw new Error(j.error);
+      if (j.status === 'done') {
+        $('status').className = 'ok'; $('status').textContent = 'Done! Saved to the downloads folder and sent to your browser.';
+        const a = document.createElement('a'); a.href = '/api/file/' + job_id; a.click();
+        break;
+      }
+    }
+  } catch (e) { $('status').className = 'err'; $('status').textContent = e.message; }
+  $('dl').disabled = false;
+};
+</script>
+</body>
+</html>

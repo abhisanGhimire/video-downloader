@@ -145,7 +145,19 @@ def get_file(job_id):
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    import socket
+
+    def free(p):
+        with socket.socket() as s:
+            try:
+                s.bind(("127.0.0.1", p))
+                return True
+            except OSError:
+                return False
+
+    # Port 5000 is sometimes busy or reserved on Windows; fall back to the next free one.
+    start = int(os.environ.get("PORT", 5000))
+    port = next((p for p in range(start, start + 50) if free(p)), start)
     url = f"http://127.0.0.1:{port}"
     threading.Timer(1.0, lambda: webbrowser.open(url)).start()
     print(f"Video Downloader running at {url}")

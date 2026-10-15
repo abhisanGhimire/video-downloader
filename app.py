@@ -3,6 +3,7 @@
 Powered by yt-dlp (1000+ supported sites) and a bundled ffmpeg.
 """
 import os
+import sys
 import threading
 import uuid
 import webbrowser
@@ -17,11 +18,13 @@ try:
 except Exception:  # fall back to ffmpeg on PATH
     FFMPEG = None
 
-BASE = Path(__file__).parent
-DOWNLOADS = BASE / "downloads"
-DOWNLOADS.mkdir(exist_ok=True)
+FROZEN = getattr(sys, "frozen", False)
+BASE = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
+# Packaged .exe saves to the user's Downloads folder; source runs use ./downloads
+DOWNLOADS = Path.home() / "Downloads" / "VideoDownloader" if FROZEN else BASE / "downloads"
+DOWNLOADS.mkdir(parents=True, exist_ok=True)
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=str(BASE / "templates"))
 jobs = {}  # job_id -> dict(status, progress, filename, error, title)
 
 VIDEO_FORMATS = ["mp4", "mkv", "webm"]

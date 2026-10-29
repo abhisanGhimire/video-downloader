@@ -3,6 +3,7 @@
 Powered by yt-dlp (1000+ supported sites) and a bundled ffmpeg.
 """
 import os
+import subprocess
 import sys
 import threading
 import uuid
@@ -10,7 +11,7 @@ import webbrowser
 from pathlib import Path
 
 import yt_dlp
-from flask import Flask, jsonify, redirect, render_template, request, send_file
+from flask import Flask, jsonify, render_template, request
 
 try:
     import imageio_ffmpeg
@@ -74,9 +75,6 @@ def info():
 
 def run_job(job_id, url, mode, fmt, height):
     job = jobs[job_id]
-    out_dir = DOWNLOADS / job_id
-    out_dir.mkdir(exist_ok=True)
-
     def hook(d):
         if d["status"] == "downloading":
             total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
@@ -89,7 +87,7 @@ def run_job(job_id, url, mode, fmt, height):
             job["status"] = "processing"
 
     opts = base_opts()
-    opts.update(outtmpl=str(out_dir / "%(title).150B.%(ext)s"), progress_hooks=[hook])
+    opts.update(outtmpl=str(DOWNLOADS / "%(title).150B.%(ext)s"), progress_hooks=[hook])
 
     if mode == "audio":
         opts["format"] = "bestaudio/best"
@@ -106,10 +104,11 @@ def run_job(job_id, url, mode, fmt, height):
         with yt_dlp.YoutubeDL(opts) as ydl:
             data = ydl.extract_info(url, download=True)
             job["title"] = data.get("title")
-        files = [p for p in out_dir.iterdir() if p.is_file()]
-        if not files:
+        saved = (data.get("requested_downloads") or [{}])[0].get("filepath")
+        if not saved or not Path(saved).exists():
             raise RuntimeError("No file was produced.")
-        job["filename"] = max(files, key=lambda p: p.stat().st_size).name
+        job["filename"] = Path(saved).name
+        job["folder"] = str(Path(saved).parent)
         job["status"] = "done"
     except Exception as e:
         job["status"] = "error"
@@ -139,15 +138,16 @@ def progress(job_id):
     return (jsonify(job), 200) if job else (jsonify(error="Unknown job"), 404)
 
 
-@app.get("/api/file/<job_id>")
-def get_file(job_id):
-    job = jobs.get(job_id)
-    if not job or job.get("status") != "done":
-        return redirect("/")  # e.g. after a restart or a refreshed tab: back to the homepage
-    path = DOWNLOADS / job_id / job["filename"]
-    if not path.exists():
-        return redirect("/")
-    return send_file(path, as_attachment=True)
+@app.post("/api/open-folder")
+def open_folder():
+    """Open the downloads folder in the file manager (this app only runs locally)."""
+    if sys.platform == "win32":
+        os.startfile(DOWNLOADS)
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", str(DOWNLOADS)])
+    else:
+        subprocess.Popen(["xdg-open", str(DOWNLOADS)])
+    return jsonify(ok=True)
 
 
 @app.get("/favicon.ico")

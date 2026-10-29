@@ -124,10 +124,14 @@ $('dl').onclick = async () => {
       else if (j.status === 'processing') $('status').textContent = 'Converting...';
       if (j.status === 'error') throw new Error(j.error);
       if (j.status === 'done') {
-        $('status').className = 'ok'; $('status').textContent = 'Done! Saved to the downloads folder and sent to your browser.';
-        // Hidden iframe triggers the save without navigating away from this page
-        const f = document.createElement('iframe'); f.style.display = 'none'; f.src = '/api/file/' + job_id;
-        document.body.appendChild(f); setTimeout(() => f.remove(), 60000);
+        $('status').className = 'ok';
+        $('status').innerHTML = '';
+        const t = document.createElement('span');
+        t.textContent = 'Done! Saved as "' + j.filename + '" in ' + j.folder + ' ';
+        const b = document.createElement('a');
+        b.textContent = 'Open folder'; b.href = '#'; b.style.color = 'var(--accent)';
+        b.onclick = e => { e.preventDefault(); fetch('/api/open-folder', { method: 'POST' }); };
+        $('status').append(t, b);
         break;
       }
     }

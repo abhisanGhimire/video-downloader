@@ -11,11 +11,10 @@ Paste a link, pick video or audio, click download. A small local web app built o
 - ffmpeg is bundled through `imageio-ffmpeg`, so no separate install is needed
 - Runs only on your machine (127.0.0.1)
 
-## Download the Windows app
+## Run from source (recommended)
 
-Grab `VideoDownloader.exe` from the [latest release](https://github.com/abhisanGhimire/video-downloader/releases/latest), double-click it, and your browser opens the app. No Python needed. Downloads are saved to `Downloads\VideoDownloader`. Windows SmartScreen may warn about an unsigned app: click "More info" then "Run anyway".
+A prebuilt .exe is not offered: unsigned single-file Python executables are often flagged by antivirus software (false positives), so run it from source instead.
 
-## Run from source
 
 Requires Python 3.9+.
 
@@ -30,7 +29,7 @@ python app.py
 
 Your browser opens at http://127.0.0.1:5000. Files are saved in the `downloads/` folder and also sent to your browser.
 
-To build the exe yourself, activate the venv and run `build.bat`.
+Optional: you can build your own exe with `build.bat` (activate the venv first). Your antivirus may still flag it.
 
 ## Keep it working
 

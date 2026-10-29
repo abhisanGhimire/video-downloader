@@ -11,9 +11,15 @@ Paste a link, pick video or audio, click download. A small local web app built o
 - ffmpeg is bundled through `imageio-ffmpeg`, so no separate install is needed
 - Runs only on your machine (127.0.0.1)
 
-## Run from source (recommended)
+## Windows: one-click start
 
-A prebuilt .exe is not offered: unsigned single-file Python executables are often flagged by antivirus software (false positives), so run it from source instead.
+1. Install [Python 3.9+](https://www.python.org/downloads/) (tick "Add python.exe to PATH").
+2. Download this repo (green **Code** button, then **Download ZIP**) and unzip it somewhere with a short path, e.g. `C:\video-downloader`.
+3. Double-click `run.bat`. It sets itself up on first run, updates the downloader engine each time, and opens the app in your browser.
+
+No exe is offered: unsigned single-file Python executables are often flagged by antivirus software (false positives), and `run.bat` avoids that.
+
+## Run from source (any OS)
 
 
 Requires Python 3.9+.

@@ -10,7 +10,7 @@ import webbrowser
 from pathlib import Path
 
 import yt_dlp
-from flask import Flask, jsonify, render_template, request, send_file
+from flask import Flask, jsonify, redirect, render_template, request, send_file
 
 try:
     import imageio_ffmpeg
@@ -143,8 +143,16 @@ def progress(job_id):
 def get_file(job_id):
     job = jobs.get(job_id)
     if not job or job.get("status") != "done":
-        return jsonify(error="Not ready"), 404
-    return send_file(DOWNLOADS / job_id / job["filename"], as_attachment=True)
+        return redirect("/")  # e.g. after a restart or a refreshed tab: back to the homepage
+    path = DOWNLOADS / job_id / job["filename"]
+    if not path.exists():
+        return redirect("/")
+    return send_file(path, as_attachment=True)
+
+
+@app.get("/favicon.ico")
+def favicon():
+    return "", 204
 
 
 if __name__ == "__main__":
